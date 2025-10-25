@@ -15,3 +15,4 @@ test_dems/
 !.pixi/config.toml
 *.json
 *.lock
+*.prj
