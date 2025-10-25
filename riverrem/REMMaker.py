@@ -195,9 +195,11 @@ class REMMaker(object):
         # get EPSG code for DEM raster projection
         logging.info("Getting DEM projection.")
         r = gdal.Open(self.dem, gdal.GA_ReadOnly)
-        self.proj = osr.SpatialReference(wkt=r.GetProjection())
-        self.epsg_code = self.proj.GetAttrValue('AUTHORITY', 1)
-        self.h_unit = self.proj.GetAttrValue('UNIT')
+        proj = osr.SpatialReference(wkt=r.GetProjection())
+        self.epsg_code = proj.GetAttrValue('AUTHORITY', 1)
+        self.h_unit = proj.GetAttrValue('UNIT')
+        # Clean up the temporary proj object
+        proj = None
         if self.epsg_code is None or self.h_unit is None:
             raise IOError("ERROR: CRS metadata is missing from the input DEM.")
         logging.info("Reading DEM as array.")
@@ -225,6 +227,9 @@ class REMMaker(object):
         ul_lat, ul_long = transform.TransformPoint(upper_left_x, upper_left_y)[:2]
         lr_lat, lr_long = transform.TransformPoint(lower_right_x, lower_right_y)[:2]
         self.bbox = [ul_lat, lr_lat, lr_long, ul_long]
+        # Clean up GDAL objects to prevent memory leaks
+        target_crs = None
+        transform = None
         # function for mapping indices to x, y coords
         logging.info("Mapping array indices to coordinates.")
         self.ix2coords = lambda t: np.column_stack(np.array([t[0] * x_size + upper_left_x + (x_size / 2),
@@ -299,8 +304,13 @@ class REMMaker(object):
         self.river_shp = os.path.join(self.out_dir, f'{self.dem_name}_river_pts.shp')
         driver = ogr.GetDriverByName('Esri Shapefile')
         ds = driver.CreateDataSource(self.river_shp)
+        # Create spatial reference for the layer
+        proj = osr.SpatialReference()
+        proj.ImportFromEPSG(int(self.epsg_code))
         # create empty multiline geometry layer
-        layer = ds.CreateLayer('', self.proj, ogr.wkbPoint)
+        layer = ds.CreateLayer('', proj, ogr.wkbPoint)
+        # Clean up proj object immediately after use
+        proj = None
         # Add fields
         layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
         defn = layer.GetLayerDefn()
@@ -343,6 +353,8 @@ class REMMaker(object):
         # raster to numpy array same shape as DEM
         r = gdal.Open(self.centerline_ras, gdal.GA_ReadOnly)
         self.centerline_array = r.GetRasterBand(1).ReadAsArray(buf_type=gdal.GDT_Int8)
+        # Clean up GDAL objects to prevent memory leaks
+        r = None
         # remove cells where DEM is null
         self.centerline_array = np.where(np.isnan(self.dem_array), 0, self.centerline_array)
         # get coordinates and DEM elevation at river pixels
@@ -425,6 +437,9 @@ class REMMaker(object):
         rem = driver.CreateCopy(self.rem_ras, r, strict=0)
         # fill with REM array
         rem.GetRasterBand(1).WriteArray(self.rem_array)
+        # Clean up GDAL objects to prevent memory leaks
+        rem = None
+        r = None
         return self.rem_ras
 
     def make_rem(self):

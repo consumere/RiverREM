@@ -1,0 +1,22 @@
+[workspace]
+authors = ["consumere <51954603+consumere@users.noreply.github.com>"]
+channels = ["conda-forge"]
+name = "RiverREM"
+platforms = ["osx-64"]
+version = "0.1.0"
+
+[tasks]
+# Generate REM from DEM
+# Usage: pixi run make-rem <path_to_dem.tif>
+make-rem = "python scripts/make_rem.py"
+
+# Generate REM visualization with PNG output (default 300 DPI)
+# Usage: pixi run make-viz <path_to_dem.tif> [colormap] [dpi]
+# Example: pixi run make-viz dem.tif topo 300
+make-viz = "python scripts/make_viz.py"
+
+[dependencies]
+riverrem = ">=1.1.2,<2"
+ipython = ">=9.6.0,<10"
+numpy = ">=1.20,<2.0"
+pillow = ">=9.0"

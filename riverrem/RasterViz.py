@@ -229,8 +229,12 @@ class RasterViz(object):
                 arr = dem_copy.GetRasterBand(1).ReadAsArray()
                 arr = np.where(np.isnan(arr), 0, arr)
                 band.WriteArray(arr)
-            # use copy as input DEM
+            # Clean up and use copy as input DEM
+            dem_copy = None
             self._dem = dem_copy_name
+        # Clean up GDAL objects to prevent memory leaks
+        band = None
+        r = None
         return
 
     def _png_kmz_checker(func):
@@ -446,6 +450,10 @@ class RasterViz(object):
         for i in range(3):
             blended_band = b * hs_array + (1 - b) * cr_arrays[i]
             blend_ras.GetRasterBand(i+1).WriteArray(blended_band)
+        # Clean up GDAL objects to prevent memory leaks
+        blend_ras = None
+        hs = None
+        cr = None
         return blend_ras_name
 
     @staticmethod
@@ -506,6 +514,9 @@ class RasterViz(object):
         h_unit = proj.GetAttrValue('UNIT')
         if epsg_code is None or h_unit is None:
             print("WARNING: CRS metadata is missing for input DEM.")
+        # Clean up GDAL objects to prevent memory leaks
+        proj = None
+        ras = None
         return epsg_code, h_unit
 
     def get_elev_range(self):
@@ -515,6 +526,9 @@ class RasterViz(object):
         elevband.ComputeStatistics(0)
         min_elev = elevband.GetMinimum()
         max_elev = elevband.GetMaximum()
+        # Clean up GDAL objects to prevent memory leaks
+        elevband = None
+        ras = None
         return min_elev, max_elev
 
     def tile_and_compress(self, in_path, out_path):
@@ -585,6 +599,9 @@ class RasterViz(object):
             max_val = band.GetMaximum()
             # set output range to start at 1, so we don't erroneously set low values to nodata (0 for byte array)
             scale = f" -scale {min_val} {max_val} 1 255"
+            # Clean up GDAL objects to prevent memory leaks
+            band = None
+            ras = None
         return scale
 
     def _clean_up(self):

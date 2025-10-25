@@ -10,4 +10,8 @@ test_dems/
 *.dbf
 *.shp
 *.shx
-*.prj
+*.prj# pixi environments
+.pixi/*
+!.pixi/config.toml
+*.json
+*.lock
